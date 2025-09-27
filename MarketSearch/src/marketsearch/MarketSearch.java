@@ -1,40 +1,41 @@
 package marketsearch;
 
+import java.awt.Cursor;
+import java.awt.Desktop;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.Scanner;
+import javax.swing.*;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
 
 /**
- * Sistema de Comparação de Preços para E-commerce Brasileiro
- *
- * Este sistema utiliza o Google Gemini 2.5 Flash para pesquisar preços de
- * produtos em múltiplos e-commerces brasileiros, retornando os 5 melhores
- * resultados ordenados por preço.
- *
- * Funcionalidades: - Pesquisa por nome do produto ou código de barras -
- * Considera CEP para cálculo de frete - Ordena resultados por preço (menor para
- * maior) - Integração otimizada com Google Gemini API
+ * Sistema de Comparação de Preços para E-commerce Brasileiro Integrado com
+ * interface Swing
  */
 public class MarketSearch {
 
-    private static final String GEMINI_API_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
+    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
     private String apiKey;
     private String apiUrl;
 
     /**
      * Construtor principal
-     *
-     * @param apiKey Chave da API do Google Gemini
-     * @param apiUrl URL da API (opcional, usa Gemini por padrão)
      */
     public MarketSearch(String apiKey, String apiUrl) {
         this.apiKey = apiKey;
@@ -84,17 +85,13 @@ public class MarketSearch {
 
         @Override
         public String toString() {
-            return String.format("LOJA: %s\nPREÇO: R$ %.2f\nSTATUS: %s\nLINK: %s\n---",
+            return String.format("🏪 %s\n💰 R$ %.2f\n📦 %s\n🔗 %s\n",
                     storeName, price, availability, link);
         }
     }
 
     /**
      * Método principal para pesquisar preços
-     *
-     * @param cep CEP para cálculo de frete
-     * @param produto Nome ou código de barras do produto
-     * @return Lista com os 5 melhores resultados ordenados por preço
      */
     public List<ProductResult> searchPrices(String cep, String produto) {
         try {
@@ -139,35 +136,29 @@ public class MarketSearch {
      * Chama a API do Google Gemini
      */
     private String callAI(String prompt) throws Exception {
-        // Construir URL com API key
         String fullUrl = apiUrl + "?key=" + apiKey;
         URL url = new URL(fullUrl);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
-        // Configurar requisição
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setDoOutput(true);
 
-        // Construir payload JSON para Gemini API
         String jsonPayload = String.format(
                 "{\"contents\":[{\"parts\":[{\"text\":\"%s\"}]}],\"generationConfig\":{\"temperature\":0.7,\"maxOutputTokens\":2000}}",
                 prompt.replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "")
         );
 
-        // Enviar requisição
         try (OutputStream os = connection.getOutputStream()) {
             byte[] input = jsonPayload.getBytes("utf-8");
             os.write(input, 0, input.length);
         }
 
-        // Verificar código de resposta
         int responseCode = connection.getResponseCode();
         if (responseCode != 200) {
             throw new Exception("Erro na API: Código " + responseCode + " - " + connection.getResponseMessage());
         }
 
-        // Ler resposta
         StringBuilder response = new StringBuilder();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "utf-8"))) {
             String responseLine;
@@ -176,14 +167,12 @@ public class MarketSearch {
             }
         }
 
-        // Extrair conteúdo da resposta JSON do Gemini
         String jsonResponse = response.toString();
         Pattern pattern = Pattern.compile("\"text\":\\s*\"([^\"]+)\"");
         Matcher matcher = pattern.matcher(jsonResponse);
 
         if (matcher.find()) {
             String content = matcher.group(1);
-            // Decodificar caracteres especiais
             content = content.replace("\\n", "\n")
                     .replace("\\\"", "\"")
                     .replace("\\r", "")
@@ -199,8 +188,6 @@ public class MarketSearch {
      */
     private List<ProductResult> parseResults(String aiResponse) {
         List<ProductResult> results = new ArrayList<>();
-
-        // Dividir por blocos (separados por ---)
         String[] blocks = aiResponse.split("---");
 
         for (String block : blocks) {
@@ -214,10 +201,7 @@ public class MarketSearch {
             }
         }
 
-        // Ordenar por preço (menor para maior)
         Collections.sort(results, (a, b) -> Double.compare(a.getPrice(), b.getPrice()));
-
-        // Retornar apenas os 5 primeiros
         return results.size() > 5 ? results.subList(0, 5) : results;
     }
 
@@ -236,7 +220,6 @@ public class MarketSearch {
 
         if (storeName != null && priceStr != null) {
             try {
-                // Extrair valor numérico do preço
                 double price = extractPrice(priceStr);
                 return new ProductResult(storeName, price,
                         availability != null ? availability : "disponível",
@@ -263,93 +246,17 @@ public class MarketSearch {
     }
 
     /**
-     * Extrai preço numérico de string (ex: "R$ 123,45" -> 123.45)
+     * Extrai preço numérico de string
      */
     private double extractPrice(String priceStr) {
-        // Remover símbolos e espaços, manter apenas números, vírgula e ponto
         String cleanPrice = priceStr.replaceAll("[^0-9,.]", "");
 
-        // Substituir vírgula por ponto se for o separador decimal
         if (cleanPrice.contains(",") && !cleanPrice.contains(".")) {
             cleanPrice = cleanPrice.replace(",", ".");
         } else if (cleanPrice.contains(",") && cleanPrice.contains(".")) {
-            // Formato brasileiro: 1.234,56 -> 1234.56
             cleanPrice = cleanPrice.replace(".", "").replace(",", ".");
         }
 
         return Double.parseDouble(cleanPrice);
-    }
-
-    /**
-     * Método utilitário para exibir resultados formatados
-     */
-    public void displayResults(List<ProductResult> results, String produto) {
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("COMPARAÇÃO DE PREÇOS - " + produto.toUpperCase());
-        System.out.println("=".repeat(60));
-
-        if (results.isEmpty()) {
-            System.out.println("Nenhum resultado encontrado.");
-            return;
-        }
-
-        for (int i = 0; i < results.size(); i++) {
-            System.out.printf("\n🏪 OPÇÃO %d (RANKING POR PREÇO)\n", i + 1);
-            System.out.println(results.get(i));
-        }
-
-        System.out.println("\n💰 MELHOR PREÇO: " + results.get(0).getStoreName()
-                + " - R$ " + String.format("%.2f", results.get(0).getPrice()));
-    }
-
-    /**
-     * Método principal para demonstração
-     */
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.println("=== SISTEMA DE COMPARAÇÃO DE PREÇOS ===");
-
-        // Solicitar API Key
-        String apiKey = "sua_api_key";
-
-        if (apiKey.isEmpty()) {
-            System.out.println("API Key é obrigatória!");
-            return;
-        }
-
-        MarketSearch system = new MarketSearch(apiKey);
-
-        while (true) {
-            System.out.println("\n" + "-".repeat(40));
-
-            // Solicitar CEP
-            System.out.print("Digite o CEP (ou 'quit' para sair): ");
-            String cep = scanner.nextLine().trim();
-
-            if ("quit".equalsIgnoreCase(cep)) {
-                System.out.println("Encerrando sistema...");
-                break;
-            }
-
-            // Solicitar produto
-            System.out.print("Digite o nome do produto ou código de barras: ");
-            String produto = scanner.nextLine().trim();
-
-            if (produto.isEmpty()) {
-                System.out.println("Nome do produto é obrigatório!");
-                continue;
-            }
-
-            System.out.println("\n🔍 Pesquisando preços... (isso pode levar alguns segundos)");
-
-            // Realizar pesquisa
-            List<ProductResult> results = system.searchPrices(cep, produto);
-
-            // Exibir resultados
-            system.displayResults(results, produto);
-        }
-
-        scanner.close();
     }
 }
