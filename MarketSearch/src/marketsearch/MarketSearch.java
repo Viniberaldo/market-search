@@ -1,28 +1,15 @@
 package marketsearch;
 
-import java.awt.Cursor;
-import java.awt.Desktop;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.swing.*;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
 
 /**
  * Sistema de Comparação de Preços para E-commerce Brasileiro Integrado com
@@ -30,7 +17,9 @@ import javax.swing.text.StyleConstants;
  */
 public class MarketSearch {
 
-    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
+    private static final String GEMINI_API_URL
+            = "https://generativelanguage.googleapis.com/v1beta/models/"
+            + "gemini-2.0-flash-exp:generateContent";
     private String apiKey;
     private String apiUrl;
 
@@ -59,7 +48,8 @@ public class MarketSearch {
         private String availability;
         private String link;
 
-        public ProductResult(String storeName, double price, String availability, String link) {
+        public ProductResult(String storeName, double price,
+                String availability, String link) {
             this.storeName = storeName;
             this.price = price;
             this.availability = availability;
@@ -109,8 +99,11 @@ public class MarketSearch {
      */
     private String buildPrompt(String cep, String produto) {
         return String.format(
-                "Você é um especialista em e-commerce brasileiro. Preciso que pesquise preços do produto: %s\n\n"
-                + "Pesquise nos principais E-COMMERCE brasileiros (Mercado Livre, Amazon, Magazine Luiza, Casas Bahia, Submarino, Americanas, etc.).\n\n"
+                "Você é um especialista em e-commerce brasileiro. "
+                + "Preciso que pesquise preços do produto: %s\n\n"
+                + "Pesquise nos principais E-COMMERCE brasileiros "
+                + "(Mercado Livre, Amazon, Magazine Luiza, Casas Bahia,"
+                + " Submarino, Americanas, etc.).\n\n"
                 + "Para cada site, retorne:\n"
                 + "1. Nome da loja\n"
                 + "2. Preço encontrado (em reais)\n"
@@ -121,13 +114,15 @@ public class MarketSearch {
                 + "- Considere frete para o CEP %s\n"
                 + "- Seja específico e detalhado\n"
                 + "- Retorne exatamente 5 opções\n\n"
+                + "- Na linha de preço, retorne somente o valor numérico\n\n"
                 + "Formato de resposta (OBRIGATÓRIO):\n"
                 + "LOJA: [Nome]\n"
                 + "PREÇO: R$ [valor]\n"
                 + "STATUS: [disponível/indisponível]\n"
                 + "LINK: [url exemplo]\n"
                 + "---\n\n"
-                + "Apresente as 5 melhores opções de compra baseada em preço e frete para o CEP %s.",
+                + "Apresente as 5 melhores opções de compra baseada em preço e"
+                + " frete para o CEP %s.",
                 produto, cep, cep
         );
     }
@@ -145,8 +140,11 @@ public class MarketSearch {
         connection.setDoOutput(true);
 
         String jsonPayload = String.format(
-                "{\"contents\":[{\"parts\":[{\"text\":\"%s\"}]}],\"generationConfig\":{\"temperature\":0.7,\"maxOutputTokens\":2000}}",
-                prompt.replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "")
+                "{\"contents\":[{\"parts\":[{\"text\":\"%s\"}]}],"
+                + "\"generationConfig\":{\"temperature\":0.7,"
+                + "\"maxOutputTokens\":2000}}",
+                prompt.replace("\"", "\\\"").replace("\n", "\\n")
+                        .replace("\r", "")
         );
 
         try (OutputStream os = connection.getOutputStream()) {
@@ -156,11 +154,13 @@ public class MarketSearch {
 
         int responseCode = connection.getResponseCode();
         if (responseCode != 200) {
-            throw new Exception("Erro na API: Código " + responseCode + " - " + connection.getResponseMessage());
+            throw new Exception("Erro na API: Código " + responseCode + " - "
+                    + connection.getResponseMessage());
         }
 
         StringBuilder response = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "utf-8"))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                connection.getInputStream(), "utf-8"))) {
             String responseLine;
             while ((responseLine = br.readLine()) != null) {
                 response.append(responseLine.trim());
@@ -180,11 +180,12 @@ public class MarketSearch {
             return content;
         }
 
-        throw new Exception("Não foi possível extrair a resposta do Gemini. Resposta: " + jsonResponse);
+        throw new Exception("Não foi possível extrair a resposta do Gemini."
+                + " Resposta: " + jsonResponse);
     }
 
     /**
-     * Parseia a resposta da IA para extrair os produtos
+     * Interpreta a resposta da IA para extrair os produtos
      */
     private List<ProductResult> parseResults(String aiResponse) {
         List<ProductResult> results = new ArrayList<>();
@@ -201,7 +202,9 @@ public class MarketSearch {
             }
         }
 
-        Collections.sort(results, (a, b) -> Double.compare(a.getPrice(), b.getPrice()));
+        Collections.sort(results, (a, b) -> Double.compare(a.getPrice(),
+                b.getPrice()));
+
         return results.size() > 5 ? results.subList(0, 5) : results;
     }
 
