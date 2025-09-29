@@ -41,7 +41,7 @@ public class MainScreen extends javax.swing.JFrame {
 
         // Placeholder text
         textCEP.setText("01234-567");
-        textProduto.setText("Digite o nome do produto ou código de barras.");
+        textProduto.setText("Digite o nome do produto");
 
         // Limpar campos quando clicados
         textCEP.addFocusListener(new FocusAdapter() {
@@ -64,8 +64,7 @@ public class MainScreen extends javax.swing.JFrame {
              */
             @Override
             public void focusGained(FocusEvent evt) {
-                if (textProduto.getText().equals("Digite o nome do produto ou"
-                        + " código de barras.")) {
+                if (textProduto.getText().equals("Digite o nome do produto")) {
                     textProduto.setText("");
                 }
             }
