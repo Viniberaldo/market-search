@@ -3,6 +3,10 @@ package marketsearch;
 import java.awt.event.ActionEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -41,6 +45,11 @@ public class MainScreen extends javax.swing.JFrame {
 
         // Limpar campos quando clicados
         textCEP.addFocusListener(new FocusAdapter() {
+
+            /**
+             * {@inheritDoc}
+             */
+            @Override
             public void focusGained(FocusEvent evt) {
                 if (textCEP.getText().equals("01234-567")) {
                     textCEP.setText("");
@@ -49,6 +58,11 @@ public class MainScreen extends javax.swing.JFrame {
         });
 
         textProduto.addFocusListener(new FocusAdapter() {
+
+            /**
+             * {@inheritDoc}
+             */
+            @Override
             public void focusGained(FocusEvent evt) {
                 if (textProduto.getText().equals("Digite o nome do produto ou"
                         + " código de barras.")) {
@@ -85,13 +99,20 @@ public class MainScreen extends javax.swing.JFrame {
         }
 
         if (marketSearch == null) {
-            String apiKey = JOptionPane.showInputDialog(this,
-                    "Digite sua API Key do Google Gemini:",
-                    "Configuração da API",
-                    JOptionPane.PLAIN_MESSAGE);
+            String apiKey = loadApiKeyFromFile();
 
             if (apiKey == null || apiKey.trim().isEmpty()) {
-                return;
+                apiKey = JOptionPane.showInputDialog(this,
+                        "Digite sua API Key do Google Gemini:",
+                        "Configuração da API",
+                        JOptionPane.PLAIN_MESSAGE);
+
+                if (apiKey == null || apiKey.trim().isEmpty()) {
+                    return;
+                }
+
+                // Salvar a API Key para próximas execuções
+                saveApiKeyToFile(apiKey.trim());
             }
 
             marketSearch = new MarketSearch(apiKey.trim());
@@ -183,6 +204,81 @@ public class MainScreen extends javax.swing.JFrame {
         }
 
         SwingUtilities.invokeLater(() -> new MainScreen().setVisible(true));
+    }
+
+    /**
+     * Carrega a API Key do arquivo 'api_key.txt' no diretório do projeto
+     *
+     * @return API Key se encontrada, null caso contrário
+     */
+    private String loadApiKeyFromFile() {
+        try {
+            // Caminho do arquivo no diretório atual
+            Path apiKeyPath = Paths.get("api_key.txt");
+
+            // Verifica se o arquivo existe
+            if (!Files.exists(apiKeyPath)) {
+                System.out.println("Arquivo api_key.txt não encontrado no "
+                        + "diretório do projeto.");
+                return null;
+            }
+
+            // Lê o conteúdo do arquivo
+            List<String> lines = Files.readAllLines(apiKeyPath);
+
+            if (lines.isEmpty()) {
+                System.out.println("Arquivo api_key.txt está vazio.");
+                return null;
+            }
+
+            // Pega a primeira linha (API Key)
+            String apiKey = lines.get(0).trim();
+
+            if (apiKey.isEmpty()) {
+                System.out.println("API Key vazia no arquivo.");
+                return null;
+            }
+
+            System.out.println("API Key carregada com sucesso do arquivo "
+                    + "api_key.txt");
+            return apiKey;
+
+        } catch (IOException e) {
+            System.err.println("Erro ao ler arquivo api_key.txt: "
+                    + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Salva a API Key no arquivo 'api_key.txt'
+     *
+     * @param apiKey A API Key para salvar
+     */
+    private void saveApiKeyToFile(String apiKey) {
+        try {
+            Path apiKeyPath = Paths.get("api_key.txt");
+
+            // Escreve a API Key no arquivo
+            Files.write(apiKeyPath, apiKey.getBytes());
+
+            System.out.println("API Key salva com sucesso em api_key.txt");
+
+            // Mostra mensagem para o usuário
+            JOptionPane.showMessageDialog(this,
+                    "API Key salva no arquivo 'api_key.txt'.\n"
+                    + "Na próxima execução, será carregada automaticamente.",
+                    "API Key Salva",
+                    JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (IOException e) {
+            System.err.println("Erro ao salvar API Key: " + e.getMessage());
+            JOptionPane.showMessageDialog(this,
+                    "Não foi possível salvar a API Key no arquivo.\n"
+                    + "Erro: " + e.getMessage(),
+                    "Erro ao Salvar",
+                    JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     /**
@@ -330,4 +426,4 @@ public class MainScreen extends javax.swing.JFrame {
     private javax.swing.JTextArea textProduto;
     private javax.swing.JProgressBar progressBar;
     // End of variables declaration//GEN-END:variables
-}
+    }

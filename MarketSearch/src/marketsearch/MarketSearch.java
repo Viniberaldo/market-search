@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -132,7 +133,8 @@ public class MarketSearch {
      */
     private String callAI(String prompt) throws Exception {
         String fullUrl = apiUrl + "?key=" + apiKey;
-        URL url = new URL(fullUrl);
+        URI uri = URI.create(fullUrl);
+        URL url = uri.toURL();
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
         connection.setRequestMethod("POST");
